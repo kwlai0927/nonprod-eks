@@ -1,0 +1,106 @@
+name: Deploy Standard Web Helm Chart to Eks
+
+on:
+  repository_dispatch:
+    types:
+        - kwlai0927/spa-chart
+        - kwlai0927/nextjs-chart
+        - kwlai0927/srv-chart
+
+  workflow_dispatch:
+    inputs:
+      repository:
+        required: true
+        type: string
+      prod-version:
+        required: true
+        type: string
+      stage:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      namespace:
+        required: true
+        type: string
+
+permissions:
+  id-token: write # This is required for aws-actions/configure-aws-credentials@v4
+  contents: write  # This is required for actions/checkout
+
+jobs:
+  
+  deploy:
+    name: Deploy Helm to Kubernetes
+    runs-on: ubuntu-latest
+
+    # runs-on:
+    #   labels:
+    #     - nonprod-eks # 可以部署到該eks 的 github runner
+
+    environment:
+      name: ${{ inputs.stage }}
+    steps:
+
+    - name: Show Client_Payload
+      id: params
+      run: |
+        REPOSITORY=${{ inputs.repository && inputs.repository ||  github.event.client_payload.repository }}
+        PROD_VERSION=${{ inputs.prod-version && inputs.prod-version || github.event.client_payload.prod-version }}
+        VERSION=${{ inputs.version && inputs.version || github.event.client_payload.version }}
+        STAGE=${{ inputs.stage && inputs.stage || github.event.client_payload.stage }}
+        NAMESPACE=${{ inputs.namespace && inputs.namespace || github.event.client_payload.namespace }}
+        IFS='/' read -r REPO_OWNER REPO_NAME <<< $REPOSITORY
+        echo "repo-owner=$REPO_OWNER" >> $GITHUB_OUTPUT
+        echo "repo-name=$REPO_NAME" >> $GITHUB_OUTPUT
+        echo "prod-version=$PROD_VERSION" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "stage=$STAGE" >> $GITHUB_OUTPUT
+        echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+        echo $GITHUB_OUTPUT
+
+    - name: 01. Checkout
+      uses: actions/checkout@v4
+
+    - name: 02. Configure AWS credentials
+      id: credential
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ vars.AWS_NONPROD_DEPLOY_ROLE_ARN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: 03. Set REGISTRY
+      id: registry
+      run: |
+        echo "registry=${{ steps.credential.outputs.aws-account-id }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
+        echo "registry=${{ steps.credential.outputs.aws-account-id }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com" >> $GITHUB_OUTPUT
+        echo "需要更新安裝unzip, 因為azure/setup-helm@v3 有Deubg, 無法使用在ARC跑"
+        sudo apt update && sudo apt install unzip && sudo apt install curl -y
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install --update
+        
+    - name: 04. install Helm CLI
+      uses: azure/setup-helm@v4.2.0
+      id: install
+
+    - name: 05. Helm Login to Amazon ECR
+      id: login-ecr
+      run: aws ecr get-login-password --region ${{ vars.AWS_REGION }} | helm registry login --username AWS --password-stdin ${{ steps.registry.outputs.registry }}
+
+    - name: 06. Install kubectl
+      uses: azure/setup-kubectl@v4.0.0
+
+    - name: 07. Update kubeconfig
+      run: aws eks update-kubeconfig --name nonprod-eks
+
+    - name: 08. Deploy helm chart to EKS
+      working-directory: ${{ steps.params.outputs.stage }}/${{ steps.params.outputs.repo-name }}
+      run: |
+        helm upgrade -i -f values.yaml -n ${{ steps.params.outputs.namespace }} \
+        --set registry=${{ steps.registry.outputs.registry }} \
+        --set repoOwner=${{ steps.params.outputs.repo-owner }} \
+        --set repoName=${{ steps.params.outputs.repo-name }} \
+        --set imageTag=${{ steps.params.outputs.version }} \
+        ${{ steps.params.outputs.repo-name }} oci://${{ steps.registry.outputs.registry }}/${{ github.event.action }}

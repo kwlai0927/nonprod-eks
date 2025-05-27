@@ -1,0 +1,1 @@
+helm upgrade -i -f values.yaml -n monitoring nonprod-grafana grafana/grafana

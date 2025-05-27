@@ -1,0 +1,1 @@
+helm upgrade -i -n monitoring -f loki-hosts.yaml nonprod-loki grafana/loki-stack

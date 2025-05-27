@@ -1,0 +1,41 @@
+registry: 418295696814.dkr.ecr.ap-southeast-1.amazonaws.com
+stage: 'dev'
+
+repoOwner: 'kwlai0927'
+repoName: 'project-srv'
+imageTag: '1.0.0'
+domain: 'towardthestars.live'
+
+podAnnotations: {}
+
+resources:
+  limits:
+    cpu: 50m
+    memory: 64Mi
+  requests:
+    cpu: 10m
+    memory: 32Mi
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Schedule:
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+configFile:
+  secret: ""  # 設定要使用的 secret 名稱
+
+healthCheck:
+  type: "http"  # 可選: http, tcp, grpc
+  http:
+    port: 80
+    path: "/"
+  tcp:
+    port: 80
+  grpc:
+    port: 50051

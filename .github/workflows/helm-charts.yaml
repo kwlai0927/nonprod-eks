@@ -1,0 +1,133 @@
+name: Helm Update
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'helm/**'
+      - '.github/workflows/chart.yaml'
+
+permissions:
+  id-token: write # This is required for aws-actions/configure-aws-credentials@v4
+  contents: write  # This is required for actions/checkout
+
+jobs:
+  helm:
+    name: Gen Helm Charts and Upload to ECR
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: 01. Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 02. Configure AWS credentials
+        id: credential
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_NONPROD_ARTIFAT_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: 03. Set REGISTRY
+        id: registry
+        run: |
+          echo "registry=${{ steps.credential.outputs.aws-account-id }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
+          echo "registry=${{ steps.credential.outputs.aws-account-id }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com" >> $GITHUB_OUTPUT
+
+      - name: 04. install Helm CLI
+        uses: azure/setup-helm@v4.2.0
+        id: install
+
+      - name: 05. Helm Login to Amazon ECR
+        id: login-ecr
+        run: aws ecr get-login-password --region ${{ vars.AWS_REGION }} | helm registry login --username AWS --password-stdin ${{ steps.registry.outputs.registry }}
+
+      - name: 06. Get Version Tag 取得最新標籤  # 取得最新標籤
+        id: version                  # 步驟 ID：get_latest_tag
+        run: |
+          VERSION=$(git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 | sed 's/^v//')
+          # 如果 VERSION 是空的，設定預設值為 0.0.1
+          if [ -z "$VERSION" ]; then
+            VERSION="0.0.1"
+            echo 'VERSION empty and set to 0.0.1'
+          else
+            # 获取 major, minor, patch 版本号
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f2)
+            PATCH=$(echo "$VERSION" | cut -d. -f3)
+
+            # 增加 patch 版本号
+            PATCH=$((PATCH + 1))
+
+            # 组合新的版本号
+            VERSION="$MAJOR.$MINOR.$PATCH"
+          fi
+          echo "VERSION=$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: 07. Update Helm appVersion
+        id: charts
+        uses: fjogeleit/yaml-update-action@main
+        with:
+          masterBranchName: 'main'
+          branch: 'main'
+          createPR: false
+          commitChange: true
+          message: 'Update Helm Version ${{ steps.version.outputs.version }}'
+          changes: |
+            {
+              "helm/alb/Chart.yaml": {
+                "version": "${{ steps.version.outputs.version }}"
+              },
+              "helm/enovy/Chart.yaml": {
+                "version": "${{ steps.version.outputs.version }}"
+              },
+              "helm/nextjs/Chart.yaml": {
+                "version": "${{ steps.version.outputs.version }}"
+              },
+              "helm/spa/Chart.yaml": {
+                "version": "${{ steps.version.outputs.version }}"
+              }
+            }
+
+      - name: 08.Create and Push Tag 創建並推送標籤 # 創建並推送標籤
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          updateOnlyUnreleased: true
+          commit: ${{ steps.charts.outputs.commit }}
+          tag: "v${{ steps.version.outputs.version }}"  # 使用生成的標籤作為標籤名稱
+          makeLatest: true
+          name: Release ${{ steps.version.outputs.version }}  # 標籤的發佈名稱
+          body: |
+            This is an Release.
+
+      - name: 09. push alb chart
+        working-directory: helm/alb
+        run: |
+          helm package .
+          FILE=$(find $PWD -name 'alb-chart-*.tgz' -type f)
+          helm push $FILE oci://${{ steps.registry.outputs.registry }}
+      
+      - name: 10. push enovy chart
+        working-directory: helm/enovy
+        run: |
+          helm package .
+          FILE=$(find $PWD -name 'enovy-chart-*.tgz' -type f)
+          helm push $FILE oci://${{ steps.registry.outputs.registry }}
+      
+      - name: 11. push nextjs chart
+        working-directory: helm/nextjs
+        run: |
+          helm package .
+          FILE=$(find $PWD -name 'nextjs-chart-*.tgz' -type f)
+          helm push $FILE oci://${{ steps.registry.outputs.registry }}
+      
+      - name: 12. push spa chart
+        working-directory: helm/spa
+        run: |
+          helm package .
+          FILE=$(find $PWD -name 'spa-chart-*.tgz' -type f)
+          helm push $FILE oci://${{ steps.registry.outputs.registry }}

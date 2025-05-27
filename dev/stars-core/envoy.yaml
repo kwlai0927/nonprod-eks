@@ -1,0 +1,569 @@
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
+
+static_resources:
+  listeners:
+    # 監聽 8080 port 處理 grpc 代理
+    - name: ops-grpc-api-listener
+      # 監聽的來源
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 8080 }
+      # 規則處理，依據filter_chain_matcher選擇最適合的 filter_chain，沒有符合就使用 default_filter_chain，目前沒有設定 default
+      filter_chains:
+        # 此處只設定一個filter_chain，所有都走到這邊
+        - name: http-filter-chain
+          filters:
+          # envoy 自帶的 http filter，處理 HTTP 和基於 HTTP 的協定處理
+          - name: envoy.filters.network.http_connection_manager
+            typed_config:
+              # 有許多處理HTTP的模組，此數使用是最常見的模組，包含grpc處理
+              "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+              codec_type: auto # 自動決定是HTTP1還是HTTP2
+              # 統計資訊的前綴
+              stat_prefix: ops_proxy
+              # 上面是 network層級的 filter，這邊是 HTTP 的 filter，順序很重要，request 由上往下，response 由下往上，最下方固定是 envoy.filters.http.router
+              http_filters:
+                - name: envoy.filters.http.grpc_web
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.grpc_web.v3.GrpcWeb
+                - name: envoy.filters.http.cors
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
+                - name: envoy.filters.http.router
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+              # 靜態路由在這邊指定，動態路由的方式還看不懂
+              route_config:
+                name: stars-ops-route-config
+                virtual_hosts:
+                  # 路由來自 ops.alpha.stars.live 的請求
+                  - name: stars-ops-virtual-host
+                    # 請求的domain，應該是 ops.stars.live
+                    domains: ["ops.alpha.stars.live"]
+                    # 路由規則
+                    routes:
+                      # 規則一：導流到 stars-model service
+                      - name: stars-model-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.ModelService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-model-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則二：導流到 stars-register service
+                      - name: stars-register-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.HostsManageService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-register-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則三：導流到 stars-provider service
+                      - name: stars-provider-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.GameProviderService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-provider cluster
+                          cluster: stars-provider-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則四：導流到 stars-recorder read
+                      - name: stars-recorder-read
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/recorder.RecorderReadService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-recorder cluster
+                          cluster: stars-recorder-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則五：導流到 stars-recorder provider
+                      - name: stars-recorder-provider
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/recorder.ProviderService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-recorder cluster
+                          cluster: stars-recorder-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則六：導流到 stars-recorder write
+                      - name: stars-recorder-write
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/recorder.RecorderService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-recorder cluster
+                          cluster: stars-recorder-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則七：導流到 stars-identity-model service
+                      - name: stars-identity-model-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/identity.IdentityStorageService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-identity cluster
+                          cluster: stars-identity-model-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則八：其他視為網頁處理
+                      - name: stars-ops-web
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/"
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-ops-web-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                    # 上面 http_filters 對此 virtual_host 的詳細設定
+                    typed_per_filter_config:
+                    # 跨網域存取設定
+                      "envoy.filters.http.cors":
+                        "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                        allow_origin_string_match:
+                          - safe_regex:
+                              regex: ".*"
+                        # Specifies the content for the access-control-allow-methods header
+                        allow_methods: GET, PUT, DELETE, POST, OPTIONS
+                        # Specifies the content for the access-control-allow-headers header
+                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,authorization
+                        # Specifies the content for the access-control-expose-headers header
+                        expose_headers: custom-header-1,grpc-status,grpc-message
+                        # Specifies the content for the access-control-max-age header
+                        max_age: "1728000"
+
+                  # 路由來自 ops-blockchain.alpha.stars.live 的請求
+                  - name: stars-ops-blockchain-virtual-host
+                    # 請求的domain，應該是 ops.stars.live
+                    domains: ["ops-blockchain.alpha.stars.live"]
+                    # 路由規則
+                    routes:
+                      # 規則一：導流到 stars-blockchain /api.ModelService
+                      - name: stars-blockchain-model-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.ModelService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-blockchain-model-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則二：導流到 stars-register /api.HostsManageService
+                      - name: stars-blockchain-register-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.HostsManageService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-blockchain-register-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則四：導流到 stars-recorder read /recorder.RecorderReadService
+                      - name: stars-blockchain-recorder-read
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/recorder.RecorderReadService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-recorder cluster
+                          cluster: stars-blockchain-recorder-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則六：導流到 stars-recorder write /recorder.RecorderService
+                      - name: stars-blockchain-recorder-write
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/recorder.RecorderService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-recorder cluster
+                          cluster: stars-blockchain-recorder-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+
+                    # 上面 http_filters 對此 virtual_host 的詳細設定
+                    typed_per_filter_config:
+                    # 跨網域存取設定
+                      "envoy.filters.http.cors":
+                        "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                        allow_origin_string_match:
+                          - safe_regex:
+                              regex: ".*"
+                        # Specifies the content for the access-control-allow-methods header
+                        allow_methods: GET, PUT, DELETE, POST, OPTIONS
+                        # Specifies the content for the access-control-allow-headers header
+                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,authorization
+                        # Specifies the content for the access-control-expose-headers header
+                        expose_headers: custom-header-1,grpc-status,grpc-message
+                        # Specifies the content for the access-control-max-age header
+                        max_age: "1728000"
+
+                  # 路由來自 verify.alpha.stars.live 的請求
+                  - name: stars-verify-virtual-host
+                    # 請求的domain，應該是 ops.stars.live
+                    domains: ["verify.alpha.stars.live"]
+                    # 路由規則
+                    routes:
+                      # 規則一：導流到 stars-model service
+                      - name: stars-model-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.ModelService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-model-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則二：導流到 stars-register service
+                      - name: stars-register-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.HostsManageService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-register-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則三：導流到 stars-identity-oidc service grpc port
+                      - name: stars-identity-nfc
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.NFCAuthenticationService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-identity cluster
+                          cluster: stars-identity-oidc-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則四：導流到 stars-identity-oidc service grpc port
+                      - name: stars-identity-model-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/api.IdentityProviderService"
+                          grpc:
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-identity cluster
+                          cluster: stars-identity-oidc-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                      # 規則五：其他視為網頁處理
+                      - name: stars-verify-web
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/"
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-model cluster
+                          cluster: stars-verify-web-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+                    # 上面 http_filters 對此 virtual_host 的詳細設定
+                    typed_per_filter_config:
+                    # 跨網域存取設定
+                      "envoy.filters.http.cors":
+                        "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                        allow_origin_string_match:
+                          - safe_regex:
+                              regex: ".*"
+                        # Specifies the content for the access-control-allow-methods header
+                        allow_methods: GET, PUT, DELETE, POST, OPTIONS
+                        # Specifies the content for the access-control-allow-headers header
+                        allow_headers: keep-alive,user-agent,cache-control,content-type,content-transfer-encoding,custom-header-1,x-accept-content-transfer-encoding,x-accept-response-streaming,x-user-agent,x-grpc-web,grpc-timeout,authorization
+                        # Specifies the content for the access-control-expose-headers header
+                        expose_headers: custom-header-1,grpc-status,grpc-message
+                        # Specifies the content for the access-control-max-age header
+                        max_age: "1728000"
+
+                  # 路由來自 tvwall.alpha.stars.live 的請求
+                  - name: stars-tvwall-rol-host
+                    # 請求的domain，應該是 ops.stars.live
+                    domains: ["tvwall.alpha.stars.live"]
+                    # 路由規則
+                    routes:
+                      # 規則一：導流到 stars-tvwall-rol service
+                      - name: stars-tvwall-rol-route
+                        # 符合判斷式：還不知道grpc model 要怎麼設定，先全部
+                        match:
+                          prefix: "/"
+                        # 路由動作-轉發（動作有route、redirect、direct_response，只可選一種）
+                        route:
+                          # 轉發到 stars-tvwall-rol cluster
+                          cluster: stars-tvwall-rol-cluster
+                          # 找不到 cluster 時回傳 code
+                          cluster_not_found_response_code: SERVICE_UNAVAILABLE
+                          # 預設 15s 此處指定 0 就不會 timeout
+                          timeout: 0s
+                          max_stream_duration:
+                            grpc_timeout_header_max: 0s
+  clusters:
+    - name: stars-model-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_model_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-model
+                      port_value: 80
+    - name: stars-register-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_register_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-register
+                      port_value: 80
+    - name: stars-provider-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_user_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-provider
+                      port_value: 80
+    - name: stars-recorder-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_user_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-recorder
+                      port_value: 80
+
+# 區塊鏈
+
+    - name: stars-blockchain-model-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_model_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-model.alpha-stars-blockchain
+                      port_value: 80
+
+    - name: stars-blockchain-register-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_register_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-register.alpha-stars-blockchain
+                      port_value: 80
+
+    - name: stars-blockchain-recorder-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_user_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-recorder.alpha-stars-blockchain
+                      port_value: 80
+
+# 身份驗證
+
+    - name: stars-identity-model-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_user_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-identity-model.alpha-stars-identity
+                      port_value: 80
+    - name: stars-identity-oidc-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_user_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-identity-oidc.alpha-stars-identity
+                      port_value: 81
+
+    - name: stars-ops-web-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_ops_web_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-ops-web
+                      port_value: 80
+
+    - name: stars-verify-web-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_verify_web_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-verify-web
+                      port_value: 80
+
+    - name: stars-tvwall-rol-cluster
+      type: logical_dns
+      http2_protocol_options: {}
+      lb_policy: round_robin
+      load_assignment:
+        cluster_name: cluster_tvwall_rol_0
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: stars-tvwall-rol
+                      port_value: 80

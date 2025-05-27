@@ -1,0 +1,20 @@
+# https://github.com/kubernetes-sigs/aws-ebs-csi-driver/blob/master/docs/parameters.md
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  namespace: monitoring
+  name: grafana
+volumeBindingMode: WaitForFirstConsumer
+reclaimPolicy: Retain
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3          # EBS 卷类型，gp3 是通用型 SSD
+  csi.storage.k8s.io/fstype: ext4       # 文件系统类型
+  encrypted: "true"
+  iopsPerGB: "100"
+allowedTopologies:
+- matchLabelExpressions:
+  - key: topology.ebs.csi.aws.com/zone
+    values:
+    - ap-southeast-1c # 指定可用区，必须与 EKS 集群的可用区一致

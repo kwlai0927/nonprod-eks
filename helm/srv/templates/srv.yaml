@@ -1,0 +1,159 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.repoName }}
+  labels:
+    {{- include "srv.labels" . | nindent 4 }}
+    {{- include "srv.selectorLabels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "srv.selectorLabels" . | nindent 6 }}
+
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "srv.selectorLabels" . | nindent 8 }}
+
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: srv
+          image: "{{ .Values.registry }}/{{ .Values.repoOwner }}/{{ .Values.repoName }}:{{ .Values.imageTag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          {{- if eq .Values.healthCheck.type "http" }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthCheck.http.path }}
+              port: {{ .Values.healthCheck.http.port }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.healthCheck.http.path }}
+              port: {{ .Values.healthCheck.http.port }}
+          {{- else if eq .Values.healthCheck.type "tcp" }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.healthCheck.tcp.port }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.healthCheck.tcp.port }}
+          {{- else if eq .Values.healthCheck.type "grpc" }}
+          livenessProbe:
+            grpc:
+              port: {{ .Values.healthCheck.grpc.port }}
+          readinessProbe:
+            grpc:
+              port: {{ .Values.healthCheck.grpc.port }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /app/config/config.yaml
+              name: config
+              subPath: config.yaml
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ .Values.configFile.secret }}
+            optional: true
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+---
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ .Values.repoName }}
+  labels:
+    {{- include "srv.labels" . | nindent 4 }}
+    {{- include "srv.selectorLabels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ .Values.repoName }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    {{- if .Values.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+    {{- end }}
+    {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
+    {{- end }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.repoName }}
+  labels:
+    {{- include "srv.labels" . | nindent 4 }}
+    {{- include "srv.selectorLabels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+      {{- include "srv.selectorLabels" . | nindent 4 }}
+
+---
+
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ .Values.repoName }}
+spec:
+  parentRefs:
+    - name: gw
+      namesrvce: gateway
+  hostnames:
+    - {{ printf "%s.%s" .Values.repoName .Values.domain }}
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: {{ .Values.repoName }}
+          port: 80
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
