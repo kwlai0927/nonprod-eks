@@ -67,40 +67,29 @@ jobs:
       id: credential
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ vars.AWS_NONPROD_DEPLOY_ROLE_ARN }}
-        aws-region: ${{ vars.AWS_REGION }}
+        role-to-assume: ${{ secrets.AWS_NONPROD_DEPLOY_ROLE_ARN }}
+        aws-region: ap-southeast-1
 
-    - name: 03. Set REGISTRY
-      id: registry
-      run: |
-        echo "registry=${{ steps.credential.outputs.aws-account-id }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com"
-        echo "registry=${{ steps.credential.outputs.aws-account-id }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com" >> $GITHUB_OUTPUT
-        echo "需要更新安裝unzip, 因為azure/setup-helm@v3 有Deubg, 無法使用在ARC跑"
-        sudo apt update && sudo apt install unzip && sudo apt install curl -y
-        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-        unzip awscliv2.zip
-        sudo ./aws/install --update
-        
-    - name: 04. install Helm CLI
+    - name: 03. install Helm CLI
       uses: azure/setup-helm@v4.2.0
       id: install
 
-    - name: 05. Helm Login to Amazon ECR
+    - name: 04. Helm Login to Amazon ECR
       id: login-ecr
-      run: aws ecr get-login-password --region ${{ vars.AWS_REGION }} | helm registry login --username AWS --password-stdin ${{ steps.registry.outputs.registry }}
+      run: aws ecr get-login-password --region ap-southeast-1 | helm registry login --username AWS --password-stdin 418295696814.dkr.ecr.ap-southeast-1.amazonaws.com
 
-    - name: 06. Install kubectl
+    - name: 05. Install kubectl
       uses: azure/setup-kubectl@v4.0.0
 
-    - name: 07. Update kubeconfig
+    - name: 06. Update kubeconfig
       run: aws eks update-kubeconfig --name nonprod-eks
 
-    - name: 08. Deploy helm chart to EKS
+    - name: 07. Deploy helm chart to EKS
       working-directory: ${{ steps.params.outputs.stage }}/${{ steps.params.outputs.repo-name }}
       run: |
         helm upgrade -i -f values.yaml -n ${{ steps.params.outputs.namespace }} \
-        --set registry=${{ steps.registry.outputs.registry }} \
+        --set registry=418295696814.dkr.ecr.ap-southeast-1.amazonaws.com \
         --set repoOwner=${{ steps.params.outputs.repo-owner }} \
         --set repoName=${{ steps.params.outputs.repo-name }} \
         --set imageTag=${{ steps.params.outputs.version }} \
-        ${{ steps.params.outputs.repo-name }} oci://${{ steps.registry.outputs.registry }}/${{ github.event.action }}
+        ${{ steps.params.outputs.repo-name }} oci://418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/${{ github.event.action }}
