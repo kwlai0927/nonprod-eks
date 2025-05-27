@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'helm/**'
-      - '.github/workflows/helm-artifact.yaml'
+      - '.github/workflows/artifact-standard-charts.yaml'
 
 permissions:
   id-token: write # This is required for aws-actions/configure-aws-credentials@v4

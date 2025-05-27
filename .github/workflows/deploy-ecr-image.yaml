@@ -12,13 +12,10 @@ on:
       repository:
         required: true
         type: string
-      prod-version:
+      image-tag:
         required: true
         type: string
-      stage:
-        required: true
-        type: string
-      version:
+      environment:
         required: true
         type: string
       namespace:
@@ -34,29 +31,24 @@ jobs:
   deploy:
     name: Deploy Helm to Kubernetes
     runs-on: ubuntu-latest
-
-    # runs-on:
-    #   labels:
-    #     - nonprod-eks # 可以部署到該eks 的 github runner
-
     environment:
-      name: ${{ inputs.stage }}
-    steps:
+      name: ${{ inputs.environment }}
 
+    steps:
     - name: Show Client_Payload
       id: params
       run: |
         REPOSITORY=${{ inputs.repository && inputs.repository ||  github.event.client_payload.repository }}
-        PROD_VERSION=${{ inputs.prod-version && inputs.prod-version || github.event.client_payload.prod-version }}
-        VERSION=${{ inputs.version && inputs.version || github.event.client_payload.version }}
-        STAGE=${{ inputs.stage && inputs.stage || github.event.client_payload.stage }}
+        IMAGE_TAG=${{ inputs.image-tag && inputs.image-tag || github.event.client_payload.image-tag }}
         NAMESPACE=${{ inputs.namespace && inputs.namespace || github.event.client_payload.namespace }}
-        IFS='/' read -r REPO_OWNER REPO_NAME <<< $REPOSITORY
+        if [[ "$REPOSITORY" == *"/"* ]]; then
+          IFS='/' read -r REPO_OWNER REPOSITORY <<< $REPOSITORY
+        else
+          REPO_OWNER=""
+        fi
         echo "repo-owner=$REPO_OWNER" >> $GITHUB_OUTPUT
-        echo "repo-name=$REPO_NAME" >> $GITHUB_OUTPUT
-        echo "prod-version=$PROD_VERSION" >> $GITHUB_OUTPUT
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "stage=$STAGE" >> $GITHUB_OUTPUT
+        echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
+        echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
         echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
         echo $GITHUB_OUTPUT
 
@@ -85,11 +77,10 @@ jobs:
       run: aws eks update-kubeconfig --name nonprod-eks
 
     - name: 07. Deploy helm chart to EKS
-      working-directory: ${{ steps.params.outputs.stage }}/${{ steps.params.outputs.repo-name }}
+      working-directory: ${{ steps.params.outputs.environment }}/${{ steps.params.outputs.repository }}
       run: |
         helm upgrade -i -f values.yaml -n ${{ steps.params.outputs.namespace }} \
-        --set registry=418295696814.dkr.ecr.ap-southeast-1.amazonaws.com \
-        --set repoOwner=${{ steps.params.outputs.repo-owner }} \
-        --set repoName=${{ steps.params.outputs.repo-name }} \
-        --set imageTag=${{ steps.params.outputs.version }} \
-        ${{ steps.params.outputs.repo-name }} oci://418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/${{ github.event.action }}
+        --set registry=418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/${{ steps.params.outputs.repo-owner }} \
+        --set repository=${{ steps.params.outputs.repository }} \
+        --set imageTag=${{ steps.params.outputs.image-tag }} \
+        ${{ steps.params.outputs.repository }} oci://418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/${{ github.event.action }}
