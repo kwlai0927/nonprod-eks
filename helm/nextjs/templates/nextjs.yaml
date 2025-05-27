@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.repoName }}
+  name: {{ .Values.repository }}
   labels:
     {{- include "nextjs.labels" . | nindent 4 }}
     {{- include "nextjs.selectorLabels" . | nindent 4 }}
@@ -26,7 +26,7 @@ spec:
       {{- end }}
       containers:
         - name: nextjs
-          image: "{{ .Values.registry }}/{{ .Values.repoOwner }}/{{ .Values.repoName }}:{{ .Values.imageTag }}"
+          image: "{{ .Values.registry }}/{{ .Values.repository }}:{{ .Values.imageTag }}"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
@@ -59,7 +59,7 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ .Values.repoName }}
+  name: {{ .Values.repository }}
   labels:
     {{- include "nextjs.labels" . | nindent 4 }}
     {{- include "nextjs.selectorLabels" . | nindent 4 }}
@@ -67,7 +67,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ .Values.repoName }}
+    name: {{ .Values.repository }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:
@@ -93,7 +93,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Values.repoName }}
+  name: {{ .Values.repository }}
   labels:
     {{- include "nextjs.labels" . | nindent 4 }}
     {{- include "nextjs.selectorLabels" . | nindent 4 }}
@@ -112,18 +112,18 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: {{ .Values.repoName }}
+  name: {{ .Values.repository }}
 spec:
   parentRefs:
     - name: gw
       namespace: gateway
   hostnames:
-    - {{ printf "%s.%s.%s" .Values.repoName .Values.stage .Values.domain }}
+    - {{ printf "%s.%s" .Values.repository .Values.domain }}
   rules:
     - backendRefs:
         - group: ""
           kind: Service
-          name: {{ .Values.repoName }}
+          name: {{ .Values.repository }}
           port: 80
       matches:
         - path:

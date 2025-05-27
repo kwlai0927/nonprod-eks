@@ -1,8 +1,7 @@
-registry: 418295696814.dkr.ecr.ap-southeast-1.amazonaws.com
-stage: 'dev'
+registry: 418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/kwlai0927
+environment: 'nonprod'
 
-repoOwner: 'toward-the-stars'
-repoName: 'project-spa'
+repository: 'project-spa'
 imageTag: '1.0.0'
 domain: 'towardthestars.live'
 

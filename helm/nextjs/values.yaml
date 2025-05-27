@@ -1,8 +1,7 @@
 registry: 418295696814.dkr.ecr.ap-southeast-1.amazonaws.com
-stage: 'dev'
+environment: 'nonprod'
 
-repoOwner: 'toward-the-stars'
-repoName: 'project-nextjs'
+repository: 'project-nextjs'
 imageTag: '1.0.0'
 domain: 'towardthestars.live'
 

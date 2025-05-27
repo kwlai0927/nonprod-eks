@@ -11,6 +11,6 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels
 */}}
 {{- define "spa.selectorLabels" -}}
-app.kubernetes.io/name: {{ .Values.repoName }}
+app.kubernetes.io/name: {{ .Values.repository }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
