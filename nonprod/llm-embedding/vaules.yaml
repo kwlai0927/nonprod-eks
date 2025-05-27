@@ -28,7 +28,7 @@ tolerations: []
 affinity: {}
 
 configFile:
-  secret: ""  # 設定要使用的 secret 名稱
+  secret: "llm-embedding"  # 設定要使用的 secret 名稱
 
 healthCheck:
   type: "http"  # 可選: http, tcp, grpc
