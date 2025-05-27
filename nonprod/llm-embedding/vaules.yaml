@@ -1,7 +1,8 @@
-registry: 418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/kwlai0927
+registry: 418295696814.dkr.ecr.ap-southeast-1.amazonaws.com
 environment: 'nonprod'
 
-repository: 'project-srv'
+repoOwner: 'kwlai0927'
+repository: 'llm-embedding'
 imageTag: '1.0.0'
 domain: 'towardthestars.live'
 
@@ -34,7 +35,3 @@ healthCheck:
   http:
     port: 80
     path: "/"
-  tcp:
-    port: 80
-  grpc:
-    port: 50051
