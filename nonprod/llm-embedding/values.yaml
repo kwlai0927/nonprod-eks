@@ -34,4 +34,4 @@ healthCheck:
   type: "http"  # 可選: http, tcp, grpc
   http:
     port: 80
-    path: "/"
+    path: "/healthz"
