@@ -3,9 +3,9 @@ name: Deploy Standard Web Helm Chart to Eks
 on:
   repository_dispatch:
     types:
-        - kwlai0927/spa-chart
-        - kwlai0927/nextjs-chart
-        - kwlai0927/srv-chart
+    - kwlai0927/spa-chart
+    - kwlai0927/nextjs-chart
+    - kwlai0927/srv-chart
 
   workflow_dispatch:
     inputs:
