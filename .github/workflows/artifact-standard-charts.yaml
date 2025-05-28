@@ -1,4 +1,4 @@
-name: Helm Update
+name: Artifact Standard Charts
 
 on:
   push:

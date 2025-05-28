@@ -3,16 +3,14 @@ name: Deploy ECR Image to EKS
 on:
   repository_dispatch:
     types:
-    - kwlai0927/spa-chart
-    - kwlai0927/nextjs-chart
-    - kwlai0927/srv-chart
+    - custom-chart
 
   workflow_dispatch:
     inputs:
       repository:
         required: true
         type: string
-      image-tag:
+      chart-tag:
         required: true
         type: string
       environment:
@@ -42,8 +40,10 @@ jobs:
         IMAGE_TAG=${{ inputs.image-tag && inputs.image-tag || github.event.client_payload.image-tag }}
         ENVIRONMENT=${{ inputs.environment && inputs.environment || github.event.client_payload.environment }}
         NAMESPACE=${{ inputs.namespace && inputs.namespace || github.event.client_payload.namespace }}
+        REGISTRY=418295696814.dkr.ecr.ap-southeast-1.amazonaws.com
         if [[ "$REPOSITORY" == *"/"* ]]; then
           IFS='/' read -r REPO_OWNER REPOSITORY <<< $REPOSITORY
+          REGISTRY=$REGISTRY/$REPO_OWNER
         else
           REPO_OWNER=""
         fi
@@ -82,7 +82,7 @@ jobs:
       working-directory: ${{ steps.params.outputs.environment }}/${{ steps.params.outputs.repository }}
       run: |
         helm upgrade -i -f values.yaml -n ${{ steps.params.outputs.namespace }} \
-        --set registry=418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/${{ steps.params.outputs.repo-owner }} \
+        --set registry=${{ steps.params.outputs.registry }} \
         --set repository=${{ steps.params.outputs.repository }} \
-        --set imageTag=${{ steps.params.outputs.image-tag }} \
-        ${{ steps.params.outputs.repository }} oci://418295696814.dkr.ecr.ap-southeast-1.amazonaws.com/${{ github.event.action }}
+        --set chart-tag=${{ steps.params.outputs.chart-tag }} \
+        ${{ steps.params.outputs.repository }} oci://${{ steps.params.outputs.registry }}/${{ github.event.repository }}
