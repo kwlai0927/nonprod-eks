@@ -40,6 +40,7 @@ jobs:
       run: |
         REPOSITORY=${{ inputs.repository && inputs.repository ||  github.event.client_payload.repository }}
         IMAGE_TAG=${{ inputs.image-tag && inputs.image-tag || github.event.client_payload.image-tag }}
+        ENVIRONMENT=${{ inputs.environment && inputs.environment || github.event.client_payload.environment }}
         NAMESPACE=${{ inputs.namespace && inputs.namespace || github.event.client_payload.namespace }}
         if [[ "$REPOSITORY" == *"/"* ]]; then
           IFS='/' read -r REPO_OWNER REPOSITORY <<< $REPOSITORY
@@ -50,6 +51,7 @@ jobs:
         echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
         echo "image-tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
         echo "namespace=$NAMESPACE" >> $GITHUB_OUTPUT
+        echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
         echo $GITHUB_OUTPUT
 
     - name: 01. Checkout
