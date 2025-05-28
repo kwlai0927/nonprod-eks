@@ -35,3 +35,8 @@ healthCheck:
   http:
     port: 80
     path: "/healthz"
+  initialDelaySeconds: 60  # 添加初始延遲，等待模型加載
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
