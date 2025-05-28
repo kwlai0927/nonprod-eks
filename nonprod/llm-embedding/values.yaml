@@ -10,11 +10,11 @@ podAnnotations: {}
 
 resources:
   limits:
-    cpu: 50m
-    memory: 64Mi
+    cpu: 500m
+    memory: 1Gi
   requests:
-    cpu: 10m
-    memory: 32Mi
+    cpu: 250m
+    memory: 512Mi
 
 autoscaling:
   minReplicas: 1
