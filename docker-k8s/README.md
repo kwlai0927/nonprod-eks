@@ -67,23 +67,25 @@ brew install cloudflared
 
 ## ⚙️ 自動化啟動 Script 與 Launchd 設定
 
-### 建立 Shell Script ~/bin/start-tunnel.sh
+### 建立 Shell Script
 
-        ``` zsh
-        #!/bin/zsh
+1. ~/bin/start-tunnel.sh
 
-        # 檢查是否已啟動 port-forward
-        if ! lsof -i :8080 > /dev/null; then
-          echo "[INFO] Port 8080 not bound, starting port-forward..." >> /tmp/tunnel.log
-          kubectl port-forward svc/envoy-gateway -n gateway 8080:8080 >> /tmp/portforward.log 2>&1 &
-        else
-          echo "[INFO] Port 8080 already in use, skipping port-forward" >> /tmp/tunnel.log
-        fi
+    ``` zsh
+    #!/bin/zsh
 
-        # 啟動 cloudflared tunnel
-        echo "[INFO] Starting cloudflared tunnel my-tunnel..." >> /tmp/tunnel.log
-        cloudflared tunnel run my-tunnel >> /tmp/cloudflared.log 2>&1
-        ```
+    # 檢查是否已啟動 port-forward
+    if ! lsof -i :8080 > /dev/null; then
+      echo "[INFO] Port 8080 not bound, starting port-forward..." >> /tmp/tunnel.log
+      kubectl port-forward svc/envoy-gateway -n gateway 8080:8080 >> /tmp/portforward.log 2>&1 &
+    else
+      echo "[INFO] Port 8080 already in use, skipping port-forward" >> /tmp/tunnel.log
+    fi
+
+    # 啟動 cloudflared tunnel
+    echo "[INFO] Starting cloudflared tunnel my-tunnel..." >> /tmp/tunnel.log
+    cloudflared tunnel run my-tunnel >> /tmp/cloudflared.log 2>&1
+    ```
 
 * 記得改權限
 
