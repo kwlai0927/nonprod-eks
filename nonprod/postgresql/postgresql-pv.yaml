@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgresql-pv
+  labels:
+    type: local
+spec:
+  storageClassName: hostpathpersistent
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/Users/kwlai0927/k8s/nonprod/postgresql-data"
+  persistentVolumeReclaimPolicy: Retain

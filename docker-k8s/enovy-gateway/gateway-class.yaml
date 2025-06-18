@@ -35,4 +35,4 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        type: ClusterIP
+        type: NodePort

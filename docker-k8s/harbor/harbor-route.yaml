@@ -7,11 +7,13 @@ spec:
   parentRefs:
   - name: gw
     namespace: gateway
+  hostnames:
+  - harbor.kwlai.dev
   rules:
   - matches:
     - path:
         type: PathPrefix
-        value: /harbor
+        value: /
     backendRefs:
-    - name: harbor-core
+    - name: harbor
       port: 80 

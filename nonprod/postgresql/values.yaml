@@ -9,21 +9,23 @@ global:
 primary:
   persistence:
     enabled: true
-    storageClass: "gp3"
+    existingClaim: "postgresql-pvc"
     size: 10Gi
     
   resources:
     limits:
-      memory: 256Mi
-      cpu: 200m
-    requests:
       memory: 128Mi
       cpu: 100m
+    requests:
+      memory: 64Mi
+      cpu: 50m
 
-service:
-  type: ClusterIP
-  ports:
-    postgresql: 5432
+  service:
+    type: NodePort
+    ports:
+      postgresql: 5432
+    nodePorts:
+      postgresql: 31474
 
 readinessProbe:
   enabled: true
