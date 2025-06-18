@@ -1,0 +1,17 @@
+controller:
+  admin:
+    existingSecret: jenkins-credentials
+    usernameKey: jenkins-admin-user
+    passwordKey: jenkins-admin-password
+  serviceType: ClusterIP
+  
+persistence:
+  enabled: true
+  existingClaim: jenkins-pvc
+  
+serviceAccount:
+  create: true
+  name: jenkins
+  
+rbac:
+  create: true 

@@ -1,0 +1,34 @@
+expose:
+  type: clusterIP
+  tls:
+    enabled: false  # 因為使用 Gateway 處理 TLS
+  clusterIP:
+    port: 80
+
+externalURL: https://harbor.kwlai.dev
+
+secretKey: harbor-credentials
+harborAdminPasswordKey: harbor-admin-password
+
+persistence:
+  enabled: true
+  persistentVolumeClaim:
+    registry:
+      existingClaim: harbor-registry
+    database:
+      existingClaim: harbor-database
+    redis:
+      existingClaim: harbor-redis
+    trivy:
+      existingClaim: harbor-trivy
+
+updateStrategy:
+  type: Recreate
+
+database:
+  internal:
+    size: 5Gi
+
+redis:
+  internal:
+    size: 1Gi 
