@@ -84,4 +84,4 @@ jobs:
         --set registry=$REGISTRY \
         --set version=${{ steps.params.outputs.version }} \
         --set domain=${{ steps.params.outputs.domain }} \
-        ${{ steps.params.outputs.chart-name }} oci://${REGISTRY}/${{ steps.params.outputs.chart-name }}
+        ${{ steps.params.outputs.chart-name }} oci://${REGISTRY}/${{ steps.params.outputs.chart-name }}:${{ steps.params.outputs.version }}
