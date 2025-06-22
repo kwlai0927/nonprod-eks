@@ -1,0 +1,12 @@
+thingsapi:
+  http:
+    addr: "0.0.0.0:81"
+  ws:
+    addr: "0.0.0.0:80"
+
+curtainclient:
+  thingsapi:
+    ws:
+      addr: thingsapi:80
+  uid: "curtain_001"
+  status: 50

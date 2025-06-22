@@ -1,0 +1,42 @@
+registry: 
+version:
+domain:
+
+thingsapi:
+  podAnnotations: {}
+  imagePullSecrets: []
+  resources:
+    limits:
+      cpu: 50m
+      memory: 64Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi
+  livenessProbe:
+    httpGet:
+      path: "/health"
+      port: 81
+    initialDelaySeconds: 45
+    periodSeconds: 12
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    httpGet:
+      path: "/health"
+      port: 81
+    initialDelaySeconds: 45
+    periodSeconds: 12
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  autoscaling:
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  configFile:
+    secretName: "things-srv"  # 設定要使用的 secret 名稱
