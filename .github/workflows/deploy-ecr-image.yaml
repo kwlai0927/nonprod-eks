@@ -5,23 +5,25 @@ on:
     types:
     - kwlai0927/spa-chart
     - kwlai0927/nextjs-chart
-    - kwlai0927/srv-chart
 
   workflow_dispatch:
     inputs:
       repository:
         required: true
         type: string
+        description: The repository name
       image-tag:
         required: true
         type: string
+        description: The image tag
       environment:
         required: true
         type: string
+        description: The environment
       namespace:
         required: true
         type: string
-
+        description: The kubernetes namespace to deploy
 permissions:
   id-token: write # This is required for aws-actions/configure-aws-credentials@v4
   contents: write  # This is required for actions/checkout
