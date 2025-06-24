@@ -46,7 +46,6 @@ jobs:
         echo "deploy-namespace=${{ inputs.deploy-namespace && inputs.deploy-namespace || github.event.client_payload.deploy-namespace }}" >> $GITHUB_OUTPUT
         echo "registry=418295696814.dkr.ecr.ap-southeast-1.amazonaws.com" >> $GITHUB_OUTPUT
         echo "region=ap-southeast-1" >> $GITHUB_OUTPUT
-        echo "domain=towardthestars.live" >> $GITHUB_OUTPUT
         echo "cluster-name=nonprod-eks" >> $GITHUB_OUTPUT
     - name: 01. Checkout
       uses: actions/checkout@v4
@@ -86,5 +85,4 @@ jobs:
         --create-namespace \
         --set registry=$REGISTRY \
         --set version=${{ steps.params.outputs.version }} \
-        --set domain=${{ steps.params.outputs.domain }} \
         ${{ steps.params.outputs.chart-name }} oci://${REGISTRY}/${{ steps.params.outputs.chart-name }}:${{ steps.params.outputs.version }}

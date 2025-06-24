@@ -1,7 +1,7 @@
 registry: 
 version:
-domain:
 
+hostname: things-thingsapi.dev.towardthestars.com
 thingsapi:
   podAnnotations: {}
   imagePullSecrets: []
