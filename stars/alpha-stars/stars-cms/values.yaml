@@ -1,0 +1,22 @@
+hostname: 'stars-cms.alpha.towardthestars.live'
+
+podAnnotations: {}
+
+resources:
+  limits:
+    cpu: 50m
+    memory: 64Mi
+  requests:
+    cpu: 10m
+    memory: 32Mi
+
+autoscaling:
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Schedule:
+nodeSelector: {}
+tolerations: []
+affinity: {}

@@ -1,0 +1,12 @@
+apiVersion: v2
+description: A Helm chart for next.js
+type: application
+
+# Fill by CI/CD
+name: nextjs-chart
+version: 0.1.0
+appVersion: 0.1.0
+annotations:
+  project: ''
+  image: ''
+  component: ''
