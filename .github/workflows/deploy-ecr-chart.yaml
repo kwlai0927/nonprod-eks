@@ -3,7 +3,7 @@ name: Deploy ECR Chart to EKS
 on:
   repository_dispatch:
     types:
-    - deploy-chart
+    - deploy-ecr-chart
 
   workflow_dispatch:
     inputs:
