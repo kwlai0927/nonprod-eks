@@ -11,6 +11,12 @@ on:
         required: true
         type: string
         description: The chart url
+
+      version:
+        required: true
+        type: string
+        description: The chart version, include the v prefix
+
       deploy-namespace:
         required: true
         type: string
@@ -31,15 +37,14 @@ jobs:
     - name: 00. Gen Params
       id: params
       run: |
+        version=${{ inputs.version && inputs.version || github.event.client_payload.version }}
         chartUrl=${{ inputs.chart-url && inputs.chart-url || github.event.client_payload.chart-url }}
         echo "chartUrl=${chartUrl}" >> $GITHUB_OUTPUT
         chartNamespace=$(echo $chartUrl | cut -d'/' -f2)
         echo "chart-namespace=${chartNamespace}" >> $GITHUB_OUTPUT
         chartNameAndTag=$(echo $chartUrl | cut -d'/' -f3-)
-        tag=$(echo $chartNameAndTag | cut -d':' -f2)
         chartName=$(echo $chartNameAndTag | cut -d':' -f1)
         echo "chart-name=${chartName}" >> $GITHUB_OUTPUT
-        echo "version=v${tag}" >> $GITHUB_OUTPUT
         repository=$(echo "${chartName}-chart" | sed 's/-chart$//')
         echo "repository=${repository}" >> $GITHUB_OUTPUT
         echo "project=$(echo $repository | cut -d'-' -f1)" >> $GITHUB_OUTPUT
