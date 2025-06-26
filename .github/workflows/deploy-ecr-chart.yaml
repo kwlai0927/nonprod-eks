@@ -7,16 +7,18 @@ on:
 
   workflow_dispatch:
     inputs:
-      chart-url:
+      chart-namespace:
+        required: false
+        type: string
+        description: The chart namespace
+      chart-name:
         required: true
         type: string
-        description: The chart url
-
+        description: The chart name 
       version:
         required: true
         type: string
         description: The chart version, include the v prefix
-
       deploy-namespace:
         required: true
         type: string
@@ -38,14 +40,12 @@ jobs:
       id: params
       run: |
         version=${{ inputs.version && inputs.version || github.event.client_payload.version }}
-        chartUrl=${{ inputs.chart-url && inputs.chart-url || github.event.client_payload.chart-url }}
-        echo "chartUrl=${chartUrl}" >> $GITHUB_OUTPUT
-        chartNamespace=$(echo $chartUrl | cut -d'/' -f2)
+        echo "version=${version}" >> $GITHUB_OUTPUT
+        chartNamespace=${{ inputs.chart-namespace && inputs.chart-namespace || github.event.client_payload.chart-namespace }}
         echo "chart-namespace=${chartNamespace}" >> $GITHUB_OUTPUT
-        chartNameAndTag=$(echo $chartUrl | cut -d'/' -f3-)
-        chartName=$(echo $chartNameAndTag | cut -d':' -f1)
+        chartName=${{ inputs.chart-name && inputs.chart-name || github.event.client_payload.chart-name }}
         echo "chart-name=${chartName}" >> $GITHUB_OUTPUT
-        repository=$(echo "${chartName}-chart" | sed 's/-chart$//')
+        repository=$(echo ${chartName} | sed 's/-chart$//')
         echo "repository=${repository}" >> $GITHUB_OUTPUT
         echo "project=$(echo $repository | cut -d'-' -f1)" >> $GITHUB_OUTPUT
         echo "component=$(echo $repository | cut -d'-' -f2-)" >> $GITHUB_OUTPUT
@@ -83,7 +83,7 @@ jobs:
       working-directory: ${{ steps.params.outputs.project }}/${{ steps.params.outputs.deploy-namespace }}/${{ steps.params.outputs.repository }}
       run: |
         helm upgrade -i -f values.yaml -n ${{ steps.params.outputs.deploy-namespace }} \
-        --version ${{ steps.params.outputs.version }} \
         --create-namespace \
-        --set registry=${{ steps.params.outputs.registry }}/${{ steps.params.outputs.chart-namespace }} \
-        ${{ steps.params.outputs.deploy-namespace }}-${{ steps.params.outputs.component }} oci://${{ steps.params.outputs.chart-url }}
+        --version ${{ steps.params.outputs.version }} \
+        ${{ steps.params.outputs.deploy-namespace }}-${{ steps.params.outputs.component }} \
+        oci://${{ steps.params.outputs.registry }}/${{ steps.params.outputs.chart-namespace }}/${{ steps.params.outputs.chart-name }}
