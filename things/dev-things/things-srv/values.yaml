@@ -16,25 +16,13 @@ thingsapi:
     httpGet:
       path: "/health"
       port: 80
-    initialDelaySeconds: 30
-    periodSeconds: 15
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
   readinessProbe:
     httpGet:
       path: "/health"
       port: 80
-    initialDelaySeconds: 30
-    periodSeconds: 15
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
   autoscaling:
     minReplicas: 1
     maxReplicas: 1
-    targetCPUUtilizationPercentage: 80
-    # targetMemoryUtilizationPercentage: 80
   nodeSelector: {}
   tolerations: []
   affinity: {}

@@ -15,26 +15,14 @@ thingsapi:
   livenessProbe:
     httpGet:
       path: "/health"
-      port: 81
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
+      port: 80
   readinessProbe:
     httpGet:
       path: "/health"
-      port: 81
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
+      port: 80
   autoscaling:
     minReplicas: 1
-    maxReplicas: 2
-    targetCPUUtilizationPercentage: 80
-    # targetMemoryUtilizationPercentage: 80
+    maxReplicas: 1
   nodeSelector: {}
   tolerations: []
   affinity: {}
