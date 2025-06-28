@@ -1,6 +1,6 @@
 thingsapi:
   http:
-    addr: "0.0.0.0:81"
+    addr: "0.0.0.0:80"
   ws:
     addr: "0.0.0.0:80"
 

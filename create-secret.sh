@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # 設定變數
-NAMESPACE=${1:-"alpha-things"}
+NAMESPACE=${1:-"dev-things"}
 SECRET_NAME="things-srv"
-CONFIG_FILE="alpha-things/things-srv-chart/config.yaml"
+CONFIG_FILE="things/dev-things/things-srv/config.yaml"
 
 # 檢查 config.yaml 是否存在
 if [ ! -f "$CONFIG_FILE" ]; then
