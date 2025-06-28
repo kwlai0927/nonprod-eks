@@ -1,7 +1,7 @@
 registry: 
 version:
 
-hostname: things-thingsapi.alpha.towardthestars.com
+hostname: things-thingsapi.alpha.towardthestars.live
 thingsapi:
   podAnnotations: {}
   imagePullSecrets: []
