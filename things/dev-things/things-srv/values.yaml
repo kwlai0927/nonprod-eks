@@ -15,7 +15,7 @@ thingsapi:
   livenessProbe:
     httpGet:
       path: "/health"
-      port: 81
+      port: 80
     initialDelaySeconds: 30
     periodSeconds: 15
     timeoutSeconds: 5
@@ -24,7 +24,7 @@ thingsapi:
   readinessProbe:
     httpGet:
       path: "/health"
-      port: 81
+      port: 80
     initialDelaySeconds: 30
     periodSeconds: 15
     timeoutSeconds: 5
